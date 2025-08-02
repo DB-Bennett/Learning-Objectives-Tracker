@@ -1,0 +1,158 @@
+-- Learning-Objectives-Tracker/sql/schema.sql
+--
+-- This script creates the database schema for the Learning Objectives Tracker.
+-- It is designed to be run in a PostgreSQL or similar SQL environment.
+
+-- Drop tables if they exist to allow for a clean start
+DROP TABLE IF EXISTS ObjectiveAchievements;
+DROP TABLE IF EXISTS LearningObjectives;
+DROP TABLE IF EXISTS Achievements;
+DROP TABLE IF EXISTS AchievementTypes;
+
+--
+-- 1. AchievementTypes: A lookup table for different types of achievements.
+--
+CREATE TABLE AchievementTypes (
+    AchievementTypeID SERIAL PRIMARY KEY,
+    TypeName VARCHAR(50) NOT NULL UNIQUE
+);
+
+--
+-- 2. Achievements: The main table for all accomplishments.
+--
+CREATE TABLE Achievements (
+    AchievementID SERIAL PRIMARY KEY,
+    AchievementName VARCHAR(255) NOT NULL,
+    Description TEXT,
+    IssuingOrganization VARCHAR(255),
+    IssueDate DATE,
+    ExpirationDate DATE,
+    CredentialURL VARCHAR(255),
+    AchievementTypeID INT NOT NULL,
+    FOREIGN KEY (AchievementTypeID) REFERENCES AchievementTypes(AchievementTypeID)
+);
+
+--
+-- 3. LearningObjectives: The main table for tracking personal goals.
+--
+CREATE TABLE LearningObjectives (
+    ObjectiveID SERIAL PRIMARY KEY,
+    ObjectiveName VARCHAR(255) NOT NULL,
+    Description TEXT,
+    StartDate DATE NOT NULL,
+    CompletionDate DATE,
+    Status VARCHAR(20) CHECK (Status IN ('Ongoing', 'Completed')) NOT NULL
+);
+
+--
+-- 4. ObjectiveAchievements: A junction table to link learning objectives to achievements.
+-- This creates a many-to-many relationship.
+--
+CREATE TABLE ObjectiveAchievements (
+    ObjectiveID INT NOT NULL,
+    AchievementID INT NOT NULL,
+    PRIMARY KEY (ObjectiveID, AchievementID),
+    FOREIGN KEY (ObjectiveID) REFERENCES LearningObjectives(ObjectiveID) ON DELETE CASCADE,
+    FOREIGN KEY (AchievementID) REFERENCES Achievements(AchievementID) ON DELETE CASCADE
+);
+
+
+-- Learning-Objectives-Tracker/sql/data.sql
+--
+-- This script contains example data to populate the database tables.
+-- You can uncomment and run these inserts to practice queries.
+
+--
+-- Populate AchievementTypes
+--
+-- INSERT INTO AchievementTypes (TypeName) VALUES
+-- ('Certificate'),
+-- ('Professional Certificate'),
+-- ('Degree'),
+-- ('Diploma'),
+-- ('License'),
+-- ('Project');
+
+
+--
+-- Populate Achievements
+--
+-- INSERT INTO Achievements (AchievementName, Description, IssuingOrganization, IssueDate, CredentialURL, AchievementTypeID) VALUES
+-- ('Google Data Analytics Professional Certificate', 'A comprehensive course covering data analysis, SQL, R, and data visualization.', 'Coursera/Google', '2023-11-01', 'https://www.coursera.org/verify/some-id', 2),
+-- ('JavaScript Algorithms and Data Structures', 'A freeCodeCamp certification covering fundamental JavaScript concepts.', 'freeCodeCamp', '2024-03-15', 'https://www.freecodecamp.org/certification/user/js-cert', 1),
+-- ('Bachelor of Science in Computer Science', 'Undergraduate degree focused on software engineering and algorithms.', 'University of XYZ', '2022-05-15', NULL, 3),
+-- ('Real Estate Broker License', 'A state license to operate as a professional real estate broker.', 'State of California Dept of Real Estate', '2024-07-20', NULL, 5),
+-- ('E-commerce Website', 'A full-stack project built with Node.js and React.', 'Personal Project', '2024-06-30', 'https://github.com/user/ecom-project', 6);
+
+
+--
+-- Populate LearningObjectives
+--
+-- INSERT INTO LearningObjectives (ObjectiveName, Description, StartDate, Status) VALUES
+-- ('Become a Certified Data Analyst', 'Complete the necessary coursework and certifications to land a data analyst role.', '2023-09-01', 'Completed'),
+-- ('Master Full-Stack Web Development', 'Gain proficiency in the MERN stack (MongoDB, Express.js, React, Node.js).', '2024-01-10', 'Ongoing'),
+-- ('Pursue Advanced Professional Certifications', 'Explore and obtain high-value certifications in the tech field.', '2024-07-01', 'Ongoing'),
+-- ('Obtain a Real Estate License', 'Complete coursework and pass the state exam to become a licensed broker.', '2024-03-01', 'Completed');
+
+
+--
+-- Populate ObjectiveAchievements (Junction Table)
+--
+-- INSERT INTO ObjectiveAchievements (ObjectiveID, AchievementID) VALUES
+-- (1, 1), -- 'Become a Certified Data Analyst' -> 'Google Data Analytics Professional Certificate'
+-- (2, 2), -- 'Master Full-Stack Web Development' -> 'JavaScript Algorithms and Data Structures'
+-- (2, 5), -- 'Master Full-Stack Web Development' -> 'E-commerce Website'
+-- (3, 1), -- 'Pursue Advanced...' -> 'Google Data Analytics...' (This shows an achievement can fulfill multiple objectives)
+-- (4, 4); -- 'Obtain a Real Estate License' -> 'Real Estate Broker License'
+
+
+--
+-- Example Queries to Practice
+--
+
+-- Find all ongoing learning objectives and their associated achievements
+-- SELECT
+--     LO.ObjectiveName,
+--     A.AchievementName,
+--     A.IssuingOrganization,
+--     A.IssueDate
+-- FROM LearningObjectives LO
+-- LEFT JOIN ObjectiveAchievements OA ON LO.ObjectiveID = OA.ObjectiveID
+-- LEFT JOIN Achievements A ON OA.AchievementID = A.AchievementID
+-- WHERE LO.Status = 'Ongoing'
+-- ORDER BY LO.StartDate DESC, A.IssueDate;
+
+
+-- Find all professional certificates obtained
+-- SELECT
+--     A.AchievementName,
+--     A.IssuingOrganization,
+--     A.IssueDate
+-- FROM Achievements A
+-- JOIN AchievementTypes AT ON A.AchievementTypeID = AT.AchievementTypeID
+-- WHERE AT.TypeName = 'Professional Certificate'
+-- ORDER BY A.IssueDate DESC;
+
+
+-- Get a count of achievements per learning objective
+-- SELECT
+--     LO.ObjectiveName,
+--     COUNT(OA.AchievementID) AS NumberOfAchievements
+-- FROM LearningObjectives LO
+-- LEFT JOIN ObjectiveAchievements OA ON LO.ObjectiveID = OA.ObjectiveID
+-- GROUP BY LO.ObjectiveName
+-- ORDER BY NumberOfAchievements DESC;
+
+
+-- Find all projects that were part of a completed objective
+-- SELECT
+--     LO.ObjectiveName,
+--     A.AchievementName,
+--     A.CredentialURL
+-- FROM LearningObjectives LO
+-- JOIN ObjectiveAchievements OA ON LO.ObjectiveID = OA.ObjectiveID
+-- JOIN Achievements A ON OA.AchievementID = A.AchievementID
+-- JOIN AchievementTypes AT ON A.AchievementTypeID = AT.AchievementTypeID
+-- WHERE LO.Status = 'Completed'
+-- AND AT.TypeName = 'Project';
+
